@@ -61,44 +61,40 @@ function isEmpty(sheet) {
   return firstItem[0][0] === '';
 }
 
-function getCustomDims(accountId, propertyId) {
+function getFilters(accountId) {
   // Get list of Custom Dimensions for given account/property
-  return Analytics.Management.CustomDimensions.list(accountId, propertyId);
-}
-
-function getHitData(dimId, profileId) {
-  // Get last 7 days hit data for given Custom Dimension
-  return Analytics.Data.Ga.get('ga:' + profileId, '7daysAgo', 'today', 'ga:hits', {dimensions: dimId});
+  return Analytics.Management.Filters.list(accountId);
 }
 
 function buildGaData(sourceDataValues) {
-  // Build the list of Custom Dimensions for selected items
+  // Build the list of Filters for selected items
   var data = {'lastItem': 0};
-  var idx, dim, customDims, collectedHits, item, accountName, accountId, propertyId, profileId, propertyName, profileName;
+  var idx, fid, filter, item, accountName, accountId, filterKind, filterName, filterCreated, filterUpdated, filterType;
   for (idx = 0; idx < sourceDataValues.length; idx++) {
     accountId = sourceDataValues[idx][0];
     accountName = sourceDataValues[idx][1];
-    propertyId = sourceDataValues[idx][2];
-    propertyName = sourceDataValues[idx][3];
-    profileId = sourceDataValues[idx][4];
-    profileName = sourceDataValues[idx][5];
+    filterName = sourceDataValues[idx][2];
+    filterKind = sourceDataValues[idx][3];
+    filterCreated = sourceDataValues[idx][4];
+    filterUpdated = sourceDataValues[idx][5];
+    filterType = sourceDataValues[idx][6];
     // Show progress popup
-    SpreadsheetApp.getActiveSpreadsheet().toast(propertyId + " " + profileName, "Processing " + (idx + 1) + "/" + sourceDataValues.length);
-    // Fetch custom dimensions for given property
-    customDims = getCustomDims(accountId, propertyId);
+    SpreadsheetApp.getActiveSpreadsheet().toast(accountId + " " + accountName, "Processing " + (idx + 1) + "/" + sourceDataValues.length);
+    // Fetch filters for given property
+    filter = getFilters(accountId);
     // Build the data structure for each given account/property/profile/dimension
     data['item' + idx] = [];
     data['item' + idx].push([accountName, accountName, accountName, accountName]);
-    data['item' + idx].push([propertyName, propertyName, propertyName, propertyName]);
-    data['item' + idx].push([propertyId, propertyId, propertyId, propertyId]);
-    data['item' + idx].push([profileName, profileName, profileName, profileName]);
-    data['item' + idx].push([profileId, profileId, profileId, profileId]);
-    data['item' + idx].push(['NAME', 'SCOPE', 'ACTIVE', 'LAST 7 DAYS']);
-    // For each Custom dim 1-200, fetch the name, scope, and activity status, or enter blank string if not available
-    for (dim = 0; dim < 200; dim++) {
-      item = customDims.items[dim];
+    data['item' + idx].push([filterName, filterName, filterName, filterName]);
+    data['item' + idx].push([filterKind, filterKind, filterKind, filterKind]);
+    data['item' + idx].push([filterType, filterType, filterType, filterType]);
+    data['item' + idx].push([filterCreated, filterCreated, filterCreated, filterCreated]);
+    data['item' + idx].push([filterUpdated, filterUpdated, filterUpdated, filterUpdated]);
+    // For each filter id 1-200, fetch the name, type, kind, createdDate, updatedDate, or enter blank string if not available
+    for (fid = 0; fid < 200; fid++) {
+      item = filter.items[fid];
       if (item) {
-        data['item' + idx].push([customDims.items[dim].name, customDims.items[dim].scope, customDims.items[dim].active, '']);
+        data['item' + idx].push([filter.items[fid].name, filter.items[fid].kind, filter.items[fid].type, filter.items[fid].created, filter.items[fid].updated, '']);
       } else {
         data['item' + idx].push(['', '', '', '']);
       }
@@ -124,8 +120,8 @@ function getRowsForAnalysis(sheet) {
 function buildGaSheet(sheet) {
   // Build the GA Dimensions sheet
   var sourceData = getRowsForAnalysis(sheet),
-      gaSheet = getSheet('GA Dimensions'),
-      firstCol = [['Account name'], ['Property name'], ['Property ID'], ['View name'], ['View ID'], ['Dimension']];
+      gaSheet = getSheet('GA Filters'),
+      firstCol = [['Account name'], ['Dimension']];
   var i, columnData;
   
   // Abort if sheet existed and user clicked CANCEL
@@ -208,7 +204,7 @@ function getGaHits() {
 function onOpen(e) {
   var menu = SpreadsheetApp.getUi().createAddonMenu();
   menu.addItem('1. Build Google Analytics hierarchy', 'writeGaHierarchy');
-  menu.addItem('2. Run validator', 'runValidator');
+  menu.addItem('2. Get filters', 'runValidator');
   menu.addItem('3. Fetch last 7 days data for selected view', 'getGaHits');
   menu.addToUi();
 }
